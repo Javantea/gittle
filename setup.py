@@ -33,8 +33,8 @@ setup_kwargs = {
     'packages': ['gittle', 'gittle.utils'],
     'install_requires': [
     # PyPI
-    'paramiko==1.10.0',
-    'pycrypto==2.6',
+    #'paramiko==1.10.0',
+    #'pycrypto==2.6',
     'dulwich==0.9.7',
     'funky==0.0.2',
     ],

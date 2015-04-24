@@ -58,13 +58,14 @@ def parse_url(url, defaults=None):
     }
     defaults = defaults or DEFAULTS
 
-    protocol = get_protocol() or defaults.get('protocol')
+    protocol = get_protocol(url) or defaults.get('protocol')
 
+    # FIXME: 
     return {
-        'domain': domain,
+        'domain': '',#domain,
         'protocol': protocol,
-        'user': user,
-        'password': password,
-        'path': path,
+        'user': '',#user,
+        'password': '',#password,
+        'path': '',#path,
     }
 

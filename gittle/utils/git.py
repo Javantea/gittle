@@ -203,7 +203,7 @@ def classic_tree_diff(object_store, old_tree, new_tree, filter_binary=None):
 def prune_tree(tree, paths):
     """Return a tree with only entries matching the list of paths supplied
     """
-    raise NotImplemented()
+    raise NotImplementedError()
 
 
 def is_sha(sha):

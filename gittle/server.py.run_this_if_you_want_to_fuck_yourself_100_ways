@@ -38,7 +38,7 @@ class SubFileSystemBackend(FileSystemBackend):
         print('opening %s' % path)
         print('full path = %s' % full_path)
 
-        return super(SubFileSystemBackend, self).open_repository(full_path)
+        return FileSystemBackend.open_repository(self, full_path)
 
 
 class GitServer(TCPGitServer):

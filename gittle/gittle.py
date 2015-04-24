@@ -14,7 +14,7 @@ from dulwich.repo import Repo as DulwichRepo
 from dulwich.client import get_transport_and_path
 from dulwich.index import build_index_from_tree, changes_from_tree
 from dulwich.objects import Tree, Blob
-from dulwich.server import update_server_info
+#from dulwich.server import update_server_info
 from dulwich.refs import SYMREF
 
 # Funky imports
@@ -30,7 +30,7 @@ from gittle import utils
 __all__ = ('Gittle',)
 
 
-# Guarantee that a diretory exists
+# Guarantee that a directory exists
 def mkdir_safe(path):
     if path and not(os.path.exists(path)):
         os.makedirs(path)
@@ -992,7 +992,7 @@ class Gittle(object):
     def refs(self):
         return self.repo.get_refs()
 
-    def set_refs(refs_dict):
+    def set_refs(self, refs_dict):
         for k, v in refs_dict.items():
             self.repo[k] = v
 
@@ -1228,7 +1228,8 @@ class Gittle(object):
     def update_server_info(self):
         if not self.is_bare:
             return
-        update_server_info(self.repo)
+        # FIXME: server is an untenable security risk, this function isn't.
+        #update_server_info(self.repo)
 
     def _is_fast_forward(self):
         pass
@@ -1239,6 +1240,8 @@ class Gittle(object):
     def __hash__(self):
         """This is required otherwise the memoize function will just mess it up
         """
+        # This hash collides with self.path. I suppose it's okay so long as we 
+        # don't try to compare.
         return hash(self.path)
 
     def __getitem__(self, key):
