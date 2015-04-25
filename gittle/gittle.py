@@ -59,9 +59,9 @@ def bare_only(method):
 class Gittle(object):
     """All paths used in Gittle external methods must be paths relative to the git repository
     """
-    DEFAULT_COMMIT = 'HEAD'
-    DEFAULT_BRANCH = 'master'
-    DEFAULT_REMOTE = 'origin'
+    DEFAULT_COMMIT = b'HEAD'
+    DEFAULT_BRANCH = b'master'
+    DEFAULT_REMOTE = b'origin'
     DEFAULT_MESSAGE = '**No Message**'
     DEFAULT_USER_INFO = {
         'name': None,
@@ -81,9 +81,9 @@ class Gittle(object):
     ]
 
     # References
-    REFS_BRANCHES = 'refs/heads/'
-    REFS_REMOTES = 'refs/remotes/'
-    REFS_TAGS = 'refs/tags/'
+    REFS_BRANCHES = b'refs/heads/'
+    REFS_REMOTES = b'refs/remotes/'
+    REFS_TAGS = b'refs/tags/'
 
     # Name pattern truths
     # Used for detecting if files are :
@@ -95,7 +95,7 @@ class Gittle(object):
     PATTERN_MODIFIED = (True, True)
 
     # Permissions
-    MODE_DIRECTORY = 040000  # Used to tell if a tree entry is a directory
+    MODE_DIRECTORY = 0o040000  # Used to tell if a tree entry is a directory
 
     # Tree depth
     MAX_TREE_DEPTH = 1000
@@ -108,7 +108,7 @@ class Gittle(object):
             self.repo = repo_or_path
         elif isinstance(repo_or_path, Gittle):
             self.repo = DulwichRepo(repo_or_path.path)
-        elif isinstance(repo_or_path, basestring):
+        elif isinstance(repo_or_path, str):
             path = os.path.abspath(repo_or_path)
             self.repo = DulwichRepo(path)
         else:
@@ -154,7 +154,7 @@ class Gittle(object):
         return None
 
     def _format_ref(self, base, extra):
-        return ''.join([base, extra])
+        return b''.join([base, extra])
 
     def _format_ref_branch(self, branch_name):
         return self._format_ref(self.REFS_BRANCHES, branch_name)
@@ -201,7 +201,7 @@ class Gittle(object):
         """
         Very simple, basic walker
         """
-        ref = ref or 'HEAD'
+        ref = ref or b'HEAD'
         sha = self._commit_sha(ref)
         for entry in self.repo.get_walker(sha):
             yield entry.commit
@@ -225,12 +225,12 @@ class Gittle(object):
     @funky.uniquify
     def recent_contributors(self, n=None, branch=None):
         n = n or 10
-        return funky.pluck(self.commit_info(end=n, branch=branch), 'author')
+        return list(funky.pluck(self.commit_info(end=n, branch=branch), 'author'))
 
     @property
     def commit_count(self):
         try:
-            return len(self.ref_walker())
+            return len(list(self.ref_walker()))
         except KeyError:
             return 0
 
@@ -457,7 +457,7 @@ class Gittle(object):
             # If no tree then stage files
             modified_files = files or self.modified_files
             logging.info("STAGING : %s" % modified_files)
-            self.repo.stage(modified_files)
+            self.repo.stage(list(modified_files))
 
         # Messages
         message = message or self.DEFAULT_MESSAGE
@@ -509,6 +509,9 @@ class Gittle(object):
 
     # Like: git commmit -a
     def commit(self, name=None, email=None, message=None, files=None, *args, **kwargs):
+        #if type(name) == str: name = name.encode('utf-8')
+        #if type(email) == str: email = email.encode('utf-8')
+        #if type(message) == str: message = message.encode('utf-8')
         user_info = {
             'name': name,
             'email': email,
@@ -559,7 +562,7 @@ class Gittle(object):
         with open(abspath, 'rb') as git_file:
             data = git_file.read()
             s = sha1()
-            s.update("blob %u\0" % len(data))
+            s.update(("blob %u\0" % len(data)).encode('ascii'))
             s.update(data)
         return (s.hexdigest(), os.stat(abspath).st_mode)
 
@@ -737,13 +740,13 @@ class Gittle(object):
     def checkout(self, ref):
         """Checkout a given ref or SHA
         """
-        self.repo.refs.set_symbolic_ref('HEAD', ref)
+        self.repo.refs.set_symbolic_ref(b'HEAD', ref)
         commit_tree = self._commit_tree(ref)
         # Rebuild index from the current tree
         return self._checkout_tree(commit_tree)
 
     @funky.arglist_method
-    def reset(self, files, commit='HEAD'):
+    def reset(self, files, commit=b'HEAD'):
         pass
 
     def rm_all(self):
@@ -757,7 +760,7 @@ class Gittle(object):
     def _to_commit(self, commit_obj):
         """Allows methods to accept both SHA's or dulwich Commit objects as arguments
         """
-        if isinstance(commit_obj, basestring):
+        if isinstance(commit_obj, str):
             return self.repo[commit_obj]
         return commit_obj
 
@@ -766,10 +769,14 @@ class Gittle(object):
         """
         if utils.git.is_sha(commit_obj):
             return commit_obj
-        elif isinstance(commit_obj, basestring):
+        elif isinstance(commit_obj, str):
             # Can't use self[commit_obj] to avoid infinite recursion
             commit_obj = self.repo[self.dwim_reference(commit_obj)]
-        return commit_obj.id
+            # FIXME: Break here.
+            if utils.git.is_sha(commit_obj):
+                return commit_obj
+        # TODO: See if this works in all cases.
+        return self.repo.refs[commit_obj]
 
     def dwim_reference(self, ref):
         """Dwim resolves a short reference to a full reference
@@ -829,11 +836,11 @@ class Gittle(object):
 
     def _parse_reference(self, ref_string):
         # COMMIT_REF~x
-        if '~' in ref_string:
-            ref, count = ref_string.split('~')
+        if b'~' in ref_string:
+            ref, count = ref_string.split(b'~')
             count = int(count)
-            commit_sha = self._commit_sha(ref)
-            return self.get_previous_commit(commit_sha, count)
+            #commit_sha = self._commit_sha(ref)
+            return self.get_previous_commit(ref, count)
         return self._commit_sha(ref_string)
 
     def _commit_tree(self, commit_sha):
@@ -876,7 +883,7 @@ class Gittle(object):
         # Default values
         context = {}
         is_tree = is_tree or False
-        parent_path = parent_path or ''
+        parent_path = parent_path or b''
 
         if is_tree:
             tree = self[commit_sha]
@@ -1007,7 +1014,7 @@ class Gittle(object):
     def active_branch(self):
         """Returns the name of the active branch, or None, if HEAD is detached
         """
-        x = self.repo.refs.read_ref('HEAD')
+        x = self.repo.refs.read_ref(b'HEAD')
         if not x.startswith(SYMREF):
             return None
         else:
@@ -1077,6 +1084,7 @@ class Gittle(object):
         """
 
         # The remote to track
+        # FIXME: They're overwriting a passed variable here.
         tracking = self.DEFAULT_REMOTE
 
         # Already exists
@@ -1084,7 +1092,7 @@ class Gittle(object):
             raise Exception("branch %s already exists" % new_branch)
 
         # Get information about remote_branch
-        remote_branch = os.path.sep.join([tracking, base_branch])
+        remote_branch = os.path.sep.join([tracking.decode('utf-8'), base_branch.decode('utf-8')])
 
         # Fork Local
         if base_branch in self.branches:
@@ -1094,13 +1102,13 @@ class Gittle(object):
             base_ref = self._format_ref_remote(remote_branch)
             # TODO : track
         else:
-            raise Exception("Can not find the branch named '%s' to fork either locally or in '%s'" % (base_branch, tracking))
+            raise Exception("Can not find the branch named '%s' to fork either locally or in '%s'" % (base_branch.decode('utf-8'), tracking.decode('utf-8')))
 
         # Reference of new branch
         new_ref = self._format_ref_branch(new_branch)
 
         # Copy reference to create branch
-        self.add_ref(new_ref, base_ref)
+        self.add_ref(new_ref, self._commit_sha(base_ref))
 
         return new_ref
 
@@ -1122,7 +1130,7 @@ class Gittle(object):
             raise Exception("branch %s already exists" % new_branch)
 
         new_ref = self._format_ref_branch(new_branch)
-        self.repo.refs.set_symbolic_ref('HEAD', new_ref)
+        self.repo.refs.set_symbolic_ref(b'HEAD', new_ref)
 
         if self.is_working:
             if empty_index:
@@ -1140,7 +1148,7 @@ class Gittle(object):
         """
         if create is None:
             create = True
-
+        # FIXME: create is ignored
         # Check if branch exists
         if not branch_name in self.branches:
             self.create_branch(branch_name, branch_name, tracking=tracking)
@@ -1149,7 +1157,7 @@ class Gittle(object):
         branch_ref = self._format_ref_branch(branch_name)
 
         # Change main branch
-        self.repo.refs.set_symbolic_ref('HEAD', branch_ref)
+        self.repo.refs.set_symbolic_ref(b'HEAD', branch_ref)
 
         if self.is_working:
             # Remove all files

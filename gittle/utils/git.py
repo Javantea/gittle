@@ -1,6 +1,10 @@
 # Python imports
 import os
-from StringIO import StringIO
+try:
+    from StringIO import StringIO
+    BytesIO = StringIO
+except ImportError:
+    from io import StringIO, BytesIO
 from functools import partial
 
 # Dulwich imports
@@ -81,13 +85,13 @@ def commit_info(commit):
 def object_diff(*args, **kwargs):
     """A more convenient wrapper around Dulwich's patching
     """
-    fd = StringIO()
+    fd = BytesIO()
     patch.write_object_diff(fd, *args, **kwargs)
     return fd.getvalue()
 
 
 def blob_diff(object_store, *args, **kwargs):
-    fd = StringIO()
+    fd = BytesIO()
     patch.write_blob_diff(fd, *args, **kwargs)
     return fd.getvalue()
 
@@ -207,7 +211,7 @@ def prune_tree(tree, paths):
 
 
 def is_sha(sha):
-    return isinstance(sha, basestring) and len(sha) == 40
+    return isinstance(sha, bytes) and len(sha) == 40
 
 
 def blob_from_path(basepath, path):

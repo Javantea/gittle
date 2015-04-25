@@ -4,8 +4,14 @@ try:
     # Try importing the faster version
     from cStringIO import StringIO
 except ImportError:
-    # Fallback to pure python if not available
-    from StringIO import StringIO
+    StringIO = None
+if StringIO == None:
+    try:
+        # Fallback to pure python if not available
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
+
 
 
 # Paramiko imports
@@ -24,7 +30,7 @@ __all__ = ('GittleAuth',)
 
 
 def get_pkey_file(pkey):
-    if isinstance(pkey, basestring):
+    if isinstance(pkey, str):
         if os.path.exists(pkey):
             pkey_file = open(pkey)
         else:

@@ -1,5 +1,8 @@
 # Python imports
-from urlparse import urlparse
+try:
+    import urlparse
+except ImportError:
+    import urllib.parse as urlparse
 
 # Local imports
 from funky import first_true
