@@ -1,10 +1,18 @@
+# Copyright 2013 Aaron O'Mullan <aaron.omullan@friendco.de>
+# Copyright 2014 Christopher Corley <cscorley@ua.edu>
+#
+# This program is free software; you can redistribute it and/or
+# modify it only under the terms of the GNU GPLv2 and/or the Apache
+# License, Version 2.0.  See the COPYING file for further details.
+
 # Python imports
 import os
+
 try:
-    from StringIO import StringIO
-    BytesIO = StringIO
+    from io import StringIO
 except ImportError:
-    from io import StringIO, BytesIO
+    from StringIO import StringIO
+
 from functools import partial
 
 # Dulwich imports
@@ -15,6 +23,8 @@ from dulwich.patch import is_binary
 # Funky imports
 from funky import first, true_only, rest, negate, transform
 
+if os.sys.version_info.major > 2 or (os.sys.version_info.major == 2 and os.sys.version_info.minor < 7):
+    basestring = str
 
 def is_readable(store):
     def fn(info):

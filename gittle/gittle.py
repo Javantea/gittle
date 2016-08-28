@@ -1,3 +1,11 @@
+# Copyright 2012-2014 Aaron O'Mullan <aaron.omullan@friendco.de>
+# Copyright 2014 Christopher Corley <cscorley@ua.edu>
+# Copyright 2014 Gregory M. Turner <gmt@be-evil.net>
+#
+# This program is free software; you can redistribute it and/or
+# modify it only under the terms of the GNU GPLv2 and/or the Apache
+# License, Version 2.0.  See the COPYING file for further details.
+
 # From the future
 from __future__ import absolute_import
 
@@ -16,6 +24,7 @@ from dulwich.index import build_index_from_tree, changes_from_tree
 from dulwich.objects import Tree, Blob
 #from dulwich.server import update_server_info
 from dulwich.refs import SYMREF
+from dulwich.errors import NotGitRepository
 
 # Funky imports
 import funky
@@ -29,6 +38,8 @@ from gittle import utils
 # Exports
 __all__ = ('Gittle',)
 
+if os.sys.version_info.major > 2 or (os.sys.version_info.major == 2 and os.sys.version_info.minor < 7):
+    basestring = str
 
 # Guarantee that a directory exists
 def mkdir_safe(path):
@@ -95,7 +106,7 @@ class Gittle(object):
     PATTERN_MODIFIED = (True, True)
 
     # Permissions
-    MODE_DIRECTORY = 0o040000  # Used to tell if a tree entry is a directory
+    MODE_DIRECTORY = 0o40000  # Used to tell if a tree entry is a directory
 
     # Tree depth
     MAX_TREE_DEPTH = 1000
@@ -307,6 +318,16 @@ class Gittle(object):
     def init_bare(cls, *args, **kwargs):
         kwargs.setdefault('bare', True)
         return cls.init(*args, **kwargs)
+
+    @classmethod
+    def is_repo(cls, path):
+        """Returns True if path is a git repository, False if it is not"""
+        try:
+            repo = Gittle(path)
+        except NotGitRepository:
+            return False
+        else:
+            return True
 
     def get_client(self, origin_uri=None, **kwargs):
         # Get the remote URL
@@ -624,12 +645,20 @@ class Gittle(object):
     @funky.transform(set)
     def _changed_entries_by_pattern(self, pattern):
         changed_entries = self._changed_entries()
-        filtered_paths = [
-            funky.first_true(names)
-            for names, modes, sha in changed_entries
-            if tuple(map(bool, names)) == pattern and funky.first_true(names)
-        ]
-
+        filtered_paths = None
+         #if the pattern is PATTERN_MODIFIED, should check the sha
+        if self.PATTERN_MODIFIED == pattern:
+            filtered_paths = [
+              funky.first_true(names)
+                  for names, modes, sha in changed_entries
+                  if tuple(map(bool, names)) == pattern and funky.first_true(names) and sha[0] == sha[1]
+            ]
+        else :
+            filtered_paths = [
+               funky.first_true(names)
+                 for names, modes, sha in changed_entries
+                 if tuple(map(bool, names)) == pattern and funky.first_true(names)
+            ]
         return filtered_paths
 
     @property
