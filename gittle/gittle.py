@@ -10,6 +10,7 @@
 from __future__ import absolute_import
 
 # Python imports
+import sys
 import os
 import copy
 import logging
@@ -39,7 +40,7 @@ from gittle import utils
 __all__ = ('Gittle',)
 
 if os.sys.version_info.major > 2 or (os.sys.version_info.major == 2 and os.sys.version_info.minor < 7):
-    basestring = str
+    str = str
 
 # Guarantee that a directory exists
 def mkdir_safe(path):
@@ -54,7 +55,7 @@ def mkdir_safe(path):
 def working_only(method):
     @wraps(method)
     def f(self, *args, **kwargs):
-        assert self.is_working, "%s can not be called on a bare repository" % method.func_name
+        assert self.is_working, "%s can not be called on a bare repository" % method.__name__
         return method(self, *args, **kwargs)
     return f
 
@@ -62,7 +63,7 @@ def working_only(method):
 def bare_only(method):
     @wraps(method)
     def f(self, *args, **kwargs):
-        assert self.is_bare, "%s can not be called on a working repository" % method.func_name
+        assert self.is_bare, "%s can not be called on a working repository" % method.__name__
         return method(self, *args, **kwargs)
     return f
 
@@ -276,7 +277,7 @@ class Gittle(object):
         if not os.path.exists(gitignore_filename):
             return []
         lines = open(gitignore_filename).readlines()
-        globers = map(lambda line: line.rstrip(), lines)
+        globers = [line.rstrip() for line in lines]
         return utils.paths.globers_to_regex(globers)
 
     # Get the absolute path for a file in the git repo
@@ -416,7 +417,7 @@ class Gittle(object):
         )
 
         # Update HEAD
-        for k, v in utils.git.clean_refs(refs).items():
+        for k, v in list(utils.git.clean_refs(refs).items()):
             self[k] = v
 
 
@@ -706,7 +707,7 @@ class Gittle(object):
         # "Flip" the dictionary
         return {
             path: state
-            for state, paths in files.items()
+            for state, paths in list(files.items())
             for path in paths
         }
 
@@ -729,7 +730,7 @@ class Gittle(object):
     @funky.arglist_method
     def rm(self, files, force=False):
         index = self.index
-        index_files = filter(lambda f: f in index, files)
+        index_files = [f for f in files if f in index]
         for f in index_files:
             del self.index[f]
         return index.write()
@@ -742,10 +743,10 @@ class Gittle(object):
     @funky.arglist_method
     def mv(self, files_pair):
         index = self.index
-        files_in_index = filter(lambda f: f[0] in index, files_pair)
-        map(self.mv_fs, files_in_index)
-        old_files = map(funky.first, files_in_index)
-        new_files = map(funky.last, files_in_index)
+        files_in_index = [f for f in files_pair if f[0] in index]
+        list(map(self.mv_fs, files_in_index))
+        old_files = list(map(funky.first, files_in_index))
+        new_files = list(map(funky.last, files_in_index))
         self.add(new_files)
         self.rm(old_files)
         self.add(old_files)
@@ -802,9 +803,10 @@ class Gittle(object):
             # Can't use self[commit_obj] to avoid infinite recursion
             commit_obj = self.repo[self.dwim_reference(commit_obj)]
             # FIXME: Break here.
-            if utils.git.is_sha(commit_obj):
-                return commit_obj
+            if utils.git.is_sha(commit_obj.sha().hexdigest()):
+                return str(commit_obj.sha().hexdigest())
         # TODO: See if this works in all cases.
+        #print(str(commit_obj.sha().hexdigest()))
         return self.repo.refs[commit_obj]
 
     def dwim_reference(self, ref):
@@ -870,6 +872,7 @@ class Gittle(object):
             count = int(count)
             #commit_sha = self._commit_sha(ref)
             return self.get_previous_commit(ref, count)
+        #print('hi', ref_string)
         return self._commit_sha(ref_string)
 
     def _commit_tree(self, commit_sha):
@@ -919,7 +922,7 @@ class Gittle(object):
         else:
             tree = self[self._commit_tree(commit_sha)]
 
-        for entry in tree.items():
+        for entry in list(tree.items()):
             # Check if entry is a directory
             if entry.mode == self.MODE_DIRECTORY:
                 context.update(
@@ -953,7 +956,7 @@ class Gittle(object):
         for commit in commits_info:
             try:
                 files = self.get_commit_files(commit['sha'], paths=[path])
-                file_path, file_data = files.items()[0]
+                file_path, file_data = list(files.items())[0]
             except IndexError:
                 continue
 
@@ -1016,12 +1019,12 @@ class Gittle(object):
             return (new_key, value)
 
         return dict(
-            map(item_map,
-                filter(
+            list(map(item_map,
+                list(filter(
                     item_filter,
-                    refs.items()
-                )
-            )
+                    list(refs.items())
+                ))
+            ))
         )
 
     @property
@@ -1078,7 +1081,7 @@ class Gittle(object):
         config = self.repo.get_config()
         return {
             keys[1]: values['url']
-            for keys, values in config.items()
+            for keys, values in list(config.items())
             if keys[0] == 'remote'
         }
 
@@ -1205,7 +1208,7 @@ class Gittle(object):
 
     def clean(self, force=None, directories=None):
         untracked_files = self.untracked_files
-        map(os.remove, untracked_files)
+        list(map(os.remove, untracked_files))
         return untracked_files
 
     def clean_working(self):
@@ -1221,7 +1224,7 @@ class Gittle(object):
             depth = self.MAX_TREE_DEPTH
         elif depth == 0:
             return structure
-        for entry in tree.items():
+        for entry in list(tree.items()):
             # tree
             if entry.mode == self.MODE_DIRECTORY:
                 # Recur
@@ -1255,7 +1258,7 @@ class Gittle(object):
     def commit_file(self, ref, path):
         """Return info on a given file for a given commit
         """
-        name, info = self.get_commit_files(ref, paths=[path]).items()[0]
+        name, info = list(self.get_commit_files(ref, paths=[path]).items())[0]
         return info
 
     def commit_tree(self, ref, *args, **kwargs):

@@ -18,8 +18,6 @@ if StringIO == None:
     except ImportError:
         from io import StringIO
 
-
-
 # Paramiko imports
 try:
     import paramiko
@@ -35,7 +33,7 @@ from .exceptions import InvalidRSAKey
 __all__ = ('GittleAuth',)
 
 if os.sys.version_info.major > 2 or (os.sys.version_info.major == 2 and os.sys.version_info.minor < 7):
-    basestring = str
+    str = str
 
 def get_pkey_file(pkey):
     if isinstance(pkey, str):

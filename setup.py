@@ -42,7 +42,7 @@ setup_kwargs = {
     # PyPI
     #'paramiko==1.10.0',
     #'pycrypto==2.6',
-    'dulwich',
+    'dulwich>=0.9.7',
     'funky==0.0.2',
     ],
 }
